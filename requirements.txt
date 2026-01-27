@@ -1,0 +1,20 @@
+typer[all]>=0.12.3
+rich>=13.7.1
+python-dotenv>=1.0.1
+PyYAML>=6.0.1
+requests>=2.32.3
+pandas>=2.2.2
+datasets>=2.20.0
+numpy>=1.26.4
+tqdm>=4.66.4
+typer
+rich
+python-dotenv
+requests
+numpy
+gymnasium==0.29.1
+
+ ./scripts/start_stack.sh
+conda activate cleanrl310
+source venv/bin/activate
+python -m src.cli train-sac --total-steps 300 --learning-starts 64 --batch-size 64   --save-every 150 --log-every 50 --use-target-echo   --target-model "ollama/mistral:instruct" --config-path config/stack.yaml

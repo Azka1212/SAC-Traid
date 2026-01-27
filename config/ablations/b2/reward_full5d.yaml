@@ -1,0 +1,131 @@
+# config/ablations/b2/reward_full5d.yaml
+# B2: Reward Ablation – Full 5-D curriculum reward (SAC-Triad default, short run)
+
+experiment:
+  name: b2_reward_full5d
+  group: b2_reward
+  variant: full5d
+  artifacts_root: artifacts/ablations/b2
+
+seeds:
+  # single seed to keep runtime low
+  values: [1]
+
+data:
+  train_dataset: sorry_bench
+  train_split: train
+  eval_dataset: jailbreakbench_jbb_ood
+  eval_split: test
+
+target:
+  # same DeepSeek target as in reward_binary.yaml
+  model_id: ollama/deepseek-r1:7b
+  short_name: deepseek_r1_7b
+
+judge:
+  model_id: ollama/llama3:judge
+  score_keys:
+    success: success
+    stealth: stealth
+    impact: impact
+    novelty: novelty
+    efficiency: efficiency
+
+rewriter:
+  model_id: ollama/yi-9b
+  enabled: true
+
+env:
+  env_id: sac_triad_env
+  horizon_T: 8
+  max_query_budget: 5          # reduced to match binary variant
+  max_steps_per_episode: 8
+
+sac:
+  # shorter training for quick comparison (same as binary variant)
+  total_env_steps: 3000
+  warmup_steps: 500
+  batch_size: 128
+  gamma: 0.99
+  tau: 0.005
+  lr_actor: 3e-4
+  lr_critic: 3e-4
+  lr_alpha: 3e-4
+  target_entropy_scale: 1.0
+  update_every: 1
+  gradient_steps_per_update: 1
+  replay_buffer_size: 200000
+  stratified_replay: true
+
+reward:
+  mode: full5d                  # <--- main difference
+  success_key: success
+  stealth_key: stealth
+  impact_key: impact
+  novelty_key: novelty
+  efficiency_key: efficiency
+
+  # Base weights (will be modulated by curriculum.schedule)
+  base_weights:
+    success: 1.0
+    stealth: 0.5
+    impact: 0.7
+    novelty: 0.5
+    efficiency: 0.3
+
+  normalize:
+    success: true
+    stealth: true
+    impact: true
+    novelty: true
+    efficiency: true
+
+  clamp_min: -1.0
+  clamp_max: 1.0
+
+curriculum:
+  enabled: true
+  # Simple 3-stage schedule over training progress in [0,1]
+  # (progress = env_steps / total_env_steps)
+  schedule:
+    - until_progress: 0.33
+      weights:
+        success: 1.0
+        stealth: 0.0
+        impact: 0.3
+        novelty: 0.0
+        efficiency: 0.0
+    - until_progress: 0.66
+      weights:
+        success: 1.0
+        stealth: 0.3
+        impact: 0.5
+        novelty: 0.2
+        efficiency: 0.1
+    - until_progress: 1.0
+      weights:
+        success: 1.0
+        stealth: 0.5
+        impact: 0.7
+        novelty: 0.5
+        efficiency: 0.3
+
+train_logging:
+  log_every_steps: 100          # more frequent logs for short run
+  eval_every_steps: 1000        # 3 eval points over 3000 steps
+  max_train_episodes: 2000
+
+eval:
+  dataset: jailbreakbench_jbb_ood
+  split: test
+  max_episodes: 256             # reduced from 1024
+  query_budgets: [5]            # match training budget
+  save_episodes: true
+
+paths:
+  run_root: "{artifacts_root}/{variant}/{target_short}/seed_{seed}"
+  train_metrics_file: "train_metrics.json"
+  train_events_file: "train_events.jsonl"
+  eval_metrics_file: "eval_metrics.json"
+  eval_episodes_file: "eval_episodes.jsonl"
+  final_model_file: "final_model.pt"

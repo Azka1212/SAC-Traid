@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# notebooks
+*.ipynb
+
+# env/secrets
+venv/
+.env
+.env.*
+
+# generated/large
+artifacts/
+data/
+runs/
+cache/
+logs/
+plots/
+
+.DS_Store

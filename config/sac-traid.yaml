@@ -1,0 +1,121 @@
+# config/eval/sac_triad_step2000_jbb_ood.yaml
+# SAC-Triad evaluation-only (fixed checkpoint step=2000)
+# Runs on the SAME baseline dataset + budget + metrics as Part A baselines.
+
+paths:
+  data_root: ./data
+  artifacts_root: ./artifacts/sac_triad/eval/step2000
+
+stack:
+  # keep your full SAC-Triad specs untouched
+  stack_config_path: config/stack.yaml
+
+datasets:
+  test_jbb_ood:
+    name: jbb_harmful_ood
+    seeds_path: ./data/jbb/data/seeds_ood-jbb.jsonl
+    max_pairs: 200
+
+# The 7 target models you want to test
+targets:
+  - id: ollama/qwen2.5:14b-instruct
+    short_name: qwen2_5_14b
+    family: qwen2_5
+    enabled: true
+
+  - id: ollama/deepseek-r1:7b
+    short_name: deepseek_r1_7b
+    family: deepseek
+    enabled: true
+
+  - id: ollama/vicuna:13b
+    short_name: vicuna_13b
+    family: vicuna
+    enabled: true
+
+  - id: ollama/gpt-oss:20b
+    short_name: gpt_oss_20b
+    family: gpt_oss
+    enabled: true
+
+  - id: ollama/llama-guard3:8b
+    short_name: llama_guard3_8b
+    family: guard
+    enabled: true
+
+  - id: ollama/granite3-guardian:8b
+    short_name: granite_guardian_8b
+    family: guard
+    enabled: true
+
+  - id: ollama/shieldgemma:9b
+    short_name: shieldgemma_9b
+    family: guard
+    enabled: true
+
+# --- Evaluation-only mode ---
+sac_triad_eval:
+  eval_only: true                  # IMPORTANT: no training updates
+  checkpoint_step: 2000            # fixed checkpoint step for Option B
+  # how to locate checkpoints (your runner resolves the final path)
+  checkpoint_root: ./artifacts/sac_triad/train
+  checkpoint_glob: "step_{step}.pt"   # or .ckpt — match your actual filename
+
+  # Fixed protocol (match baseline)
+  dataset: test_jbb_ood
+  query_budget: 25                 # must match baseline “max_rounds/budget”
+  eval_episodes: 200               # normally equals max_pairs; runner can derive
+  seeds: [0, 1, 2]
+
+  # Force deterministic eval decoding (target)
+  target_decoding:
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 256
+
+  # Keep SAC-Triad components consistent with your stack.yaml
+  # - judge spec comes from stack.yaml (app.judge)
+  # - rewriter spec comes from stack.yaml (app.rewriter)
+  # Only override here if your baseline requires it
+  enforce_stack_judge: true
+  enforce_stack_rewriter: true
+eval:
+  output_root: /home/security/Azka_container/artifacts/eval
+  runs_root: /home/security/Azka_container/artifacts/runs
+  checkpoint_file: step_020000.pt
+  query_budget: 25
+  dataset:
+    seeds_path: ./data/jbb/data/seeds_ood-jbb.jsonl
+    max_pairs: 200
+    
+metrics:
+  compute_5d: true
+  compute_asr: true
+  compute_qps: true
+  compute_distinct_n: [1, 2, 3]
+  compute_runtime: true
+  compute_query_efficiency: true
+
+run_matrix:
+  experiment_name: sac_triad_eval_step2000_jbb_ood
+  dataset: test_jbb_ood
+  query_budgets: [4]
+  repeats: 1
+
+  target_short_names:
+    - qwen2_5_14b
+    - deepseek_r1_7b
+    - vicuna_13b
+    - gpt_oss_20b
+    - llama_guard3_8b
+    - granite_guardian_8b
+    - shieldgemma_9b
+
+logging:
+  save_events_jsonl: true
+  save_events_csv: true
+  save_metrics_json: true
+  save_config_snapshot: true
+  save_git_commit: true
+  max_prompt_chars: 8000
+  redact_prompts_in_csv: false

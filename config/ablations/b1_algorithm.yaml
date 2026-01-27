@@ -1,0 +1,58 @@
+ablation_name: "B1_algorithm"
+
+# ------------------------------------------------------------------
+# Global setup for Algorithm Ablation (B1)
+# ------------------------------------------------------------------
+
+# Where B1 artifacts live (metrics.json per variant/seed, CSV tables, etc.)
+artifacts_root: "artifacts/ablations/B1_algorithm"
+
+# Base stack config (models, data paths, router, judge, rewriter, etc.)
+stack_config_path: "config/stack.yaml"
+
+# Global datasets for B1:
+# - Train on SORRY-Bench (ID)
+# - Eval on JailbreakBench OOD harmful split (JBB-OOD)
+train_dataset_tag: "SORRY-BENCH"
+eval_dataset_tag: "OOD-JBB"
+
+# Fixed target model for all algorithm variants
+target_model: "ollama/gpt-oss-20b"
+
+# Seeds (same across all variants)
+seeds: [1]
+
+
+# Training / eval budgets (kept identical across variants)
+train_steps: 2000
+eval_episodes: 1000
+eval_budget: 5
+
+# Filename each variant/seed writes into its run_dir
+metrics_filename: "metrics.json"
+
+# ------------------------------------------------------------------
+# Variants for Algorithm Ablation (B1)
+# ------------------------------------------------------------------
+variants:
+  # 1) Full SAC-Triad (your main method)
+  - name: "sac_triad"
+    label: "SAC-Triad"
+    algorithm: "sac"
+    config_overrides:
+      # example override (merged into cfg dict in _run_sac_triad)
+      entropy_coef: 0.2
+
+  # 2) PPO-Triad (same env & reward, different optimizer)
+  - name: "ppo_triad"
+    label: "PPO-Triad"
+    algorithm: "ppo"
+    config_overrides:
+      # fed into cfg dict in _run_ppo_triad (e.g., cfg["ppo_clip"])
+      ppo_clip: 0.2
+
+  # 3) Bandit-Triad (no temporal credit assignment)
+  - name: "bandit_triad"
+    label: "Bandit-Triad"
+    algorithm: "bandit"
+    config_overrides: {}

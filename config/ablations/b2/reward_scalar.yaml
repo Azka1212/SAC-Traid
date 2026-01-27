@@ -1,0 +1,92 @@
+# config/ablations/b2/reward_scalar.yaml
+# B2: Reward Ablation – Scalar reward (Success + λ·Impact)
+
+experiment:
+  name: b2_reward_scalar
+  group: b2_reward
+  variant: scalar
+  artifacts_root: artifacts/ablations/b2
+
+seeds:
+  # single seed to keep runtime low and consistent with other variants
+  values: [1]
+
+data:
+  train_dataset: sorry_bench
+  train_split: train
+  eval_dataset: jailbreakbench_jbb_ood
+  eval_split: test
+
+target:
+  # same DeepSeek target as other B2 variants
+  model_id: ollama/deepseek-r1:7b
+  short_name: deepseek_r1_7b
+
+judge:
+  model_id: ollama/llama3:judge
+  score_keys:
+    success: success
+    stealth: stealth
+    impact: impact
+    novelty: novelty
+    efficiency: efficiency
+
+rewriter:
+  model_id: ollama/yi-9b
+  enabled: true
+
+env:
+  env_id: sac_triad_env
+  horizon_T: 8
+  max_query_budget: 5          # reduced to match other B2 configs
+  max_steps_per_episode: 8
+
+sac:
+  # shorter training for quick comparison
+  total_env_steps: 3000
+  warmup_steps: 500
+  batch_size: 128
+  gamma: 0.99
+  tau: 0.005
+  lr_actor: 3e-4
+  lr_critic: 3e-4
+  lr_alpha: 3e-4
+  target_entropy_scale: 1.0
+  update_every: 1
+  gradient_steps_per_update: 1
+  replay_buffer_size: 200000
+  stratified_replay: true
+
+reward:
+  mode: scalar                 # <--- main difference
+  success_key: success
+  impact_key: impact
+  # r = w_success * success + w_impact * impact
+  w_success: 1.0
+  w_impact: 0.5
+  normalize_success: true      # optional: rescale to [0,1]
+  normalize_impact: true
+  clamp_min: -1.0
+  clamp_max: 1.0
+
+curriculum:
+  enabled: false               # no curriculum here; pure scalar
+
+train_logging:
+  log_every_steps: 100         # more frequent logs for short run
+  eval_every_steps: 1000       # a few evals over 3000 steps
+  max_train_episodes: 2000
+
+eval:
+  dataset: jailbreakbench_jbb_ood
+  split: test
+  max_episodes: 256            # reduced from 1024
+  query_budgets: [5]           # match training budget
+  save_episodes: true
+
+paths:
+  run_root: "{artifacts_root}/{variant}/{target_short}/seed_{seed}"
+  train_metrics_file: "train_metrics.json"
+  train_events_file: "train_events.jsonl"
+  eval_metrics_file: "eval_metrics.json"
+  eval_episodes_file: "eval_episodes.jsonl"
